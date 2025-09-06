@@ -8,7 +8,7 @@ Thanks to [hackday for posting](https://hackaday.com/2025/08/17/llama-habitat-co
 [Reposted by Yann LeCun](https://www.facebook.com/yann.lecun/posts/llama-2-has-been-ported-to-the-psp-in-addition-to-the-raspberry-pi-486-pc-commod/10161114909482143/)
 
 
-![Running on physical device](assets/2.jpeg)
+![Running on physical device](docs/pic_0001.bmp)
 
 ## Summary
 - [Supported Models](#supported-models)
