@@ -29,21 +29,13 @@ char* generate(Transformer *transformer, Tokenizer *tokenizer, Sampler *sampler,
     // Encode the (string) prompt into tokens sequence
     int num_prompt_tokens = 0;
 
-    pspDebugScreenSetXY(0, 0);
-    print("Tokenizing...");
-
     int* prompt_tokens = (int*)malloc((strlen(prompt)+3) * sizeof(int));
     encode(tokenizer, prompt, 1, 0, prompt_tokens, &num_prompt_tokens);
     if (num_prompt_tokens < 1) {
-        pspDebugScreenSetXY(0, 0);
+        newScreen(0, 1);
         print("ERROR: Not tokens in prompt");
         while(1);
     }
-
-    pspDebugScreenSetXY(0, 0);
-    print("\t\t\t\t\t\t\t\t\t");
-    pspDebugScreenSetXY(0, 2);
-
 
     // prepare nnet buffers
     //nnet_init(transformer);
@@ -69,8 +61,7 @@ char* generate(Transformer *transformer, Tokenizer *tokenizer, Sampler *sampler,
     int pos = 0; // posição na sequencia
 
     while(pos < steps) {
-        pspDebugScreenSetXY(0, 0);
-        pspDebugScreenClear();
+        newScreen(0, 1);
         print("Generating tokens %d of %d...\n", pos + 1, steps);        
         // encaminha o transformer pra obter logits pro proximo token
         float* logits = forward(transformer, token, pos);

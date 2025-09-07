@@ -31,6 +31,9 @@ post-build:
 	@echo "post-Build: organizing files in folder $(BUILD_DIR)/"
 	@mkdir -p $(BUILD_DIR)
 	@mv EBOOT.PBP $(BUILD_DIR)/
+	@mv Llama3PSP.elf $(BUILD_DIR)/
+	@mv Llama3PSP.prx $(BUILD_DIR)/
+	@mv PARAM.SFO $(BUILD_DIR)/
 	@echo "compiling files..."
 	@cp resources/stories260K.bin $(BUILD_DIR)/
 	@cp resources/tok512.bin $(BUILD_DIR)/

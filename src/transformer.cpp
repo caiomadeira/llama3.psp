@@ -18,10 +18,6 @@ char* g_weights_memory_block = NULL;
 extern "C" {
 
 void malloc_run_state(RunState* s, Config* p) {
-    //RunState* runstate = &t->state;
-    //Config* config = t->config;
-    // float* casting pro calloc p compatibilidade com c++ e size_t em key_cache p evitar overflow em multiplicacoes grandes
-    // usando calloc ao inves de malloc p/ nao disparar warnings no valgrind
 	int kv_dim = (p->dimension * p->number_key_value_heads) / p->number_of_heads;
 	s->x = (float*)calloc(p->dimension, sizeof(float));
 	s->xb = (float*)calloc(p->dimension, sizeof(float));
@@ -33,14 +29,7 @@ void malloc_run_state(RunState* s, Config* p) {
 	s->value_cache = (float*)calloc(p->number_of_layers * p->sequence_len * kv_dim, sizeof(float));
 	s->att = (float*)calloc(p->number_of_heads * p->sequence_len, sizeof(float));
 	s->logits = (float*)calloc(p->vocab_size, sizeof(float));
-    // cache for sin/cos used in rope()
-    // runstate->fcir = (float*)calloc(config->dimension / config->number_of_heads, sizeof(float));
-
-    // runstate->k = (float*)calloc(config->dimension, sizeof(float));
-    // runstate->v = (float*)calloc(config->dimension, sizeof(float));
-
-    // adicionando verificacao de erro
-    // TODO: Verificar todas as chabes
+	
     MALLOC_FAILED(s->x, "s->x");
     MALLOC_FAILED(s->xb, "s->xb");
     MALLOC_FAILED(s->xb2, "s->xb2");
@@ -119,34 +108,40 @@ gerar um arquivo config.bin antes.
 
 void read_checkpoint(char *checkpoint, Config *config, TransformerWeights *weights,
 					 int *fd, float **data, ssize_t *file_size) {
-
 	FILE *file = fopen(checkpoint, "rb");
 	if (!file)
 	{
-		print("Couldn't open file %s\n", checkpoint);
+		newScreen(0, 1);
+		print("[ERROR] CHECKPOINT FILE: Couldn't open file %s\n", checkpoint);
 		delay(1000);
-		exit(EXIT_FAILURE);
+		sceKernelExitGame();
 	}
 
 	// read in the config header
 	if (fread(config, sizeof(Config), 1, file) != 1)
 	{
-		exit(EXIT_FAILURE);
+		newScreen(0, 1);
+		print("[ERROR] CHECKPOINT FILE: Couldn't READ file %s\n", checkpoint);
+		delay(1000);
+		sceKernelExitGame();
 	}
 	// negative vocab size is hacky way of signaling unshared weights. bit yikes.
 	int shared_weights = config->vocab_size > 0 ? 1 : 0;
+	if (DEBUG == 1) print("Shared weights = %.2f\n", shared_weights);
 	config->vocab_size = abs(config->vocab_size);
 	// figure out the file size
 	fseek(file, 0, SEEK_END); // move file pointer to end of file
 	*file_size = ftell(file); // get the file size, in bytes
+	if (DEBUG == 1) print("checkpoint file size (in bytes)= %d\n", (int)*file_size);
 	fclose(file);
 	// memory map the Transformer weights into the data pointer
 	*fd = open(checkpoint, O_RDONLY); // open in read only mode
 	if (*fd == -1)
 	{
-		print("open failed!\n");
+		newScreen(0, 1);
+		print("[ERROR] CHECKPOINT FILE: Couldn't READ file %s\n", checkpoint);
 		delay(1000);
-		exit(EXIT_FAILURE);
+		sceKernelExitGame();
 	}
 
 	off_t size = lseek(*fd, 0, SEEK_END);
@@ -156,9 +151,10 @@ void read_checkpoint(char *checkpoint, Config *config, TransformerWeights *weigh
 	*data = (float*)malloc(*file_size);
 	if (*data == NULL)
 	{
-		print("malloc failed!\n");
-		close(*fd);
-		exit(EXIT_FAILURE);
+		newScreen(0, 1);
+		print("[ERROR] data malloc failed.\n");
+		delay(1000);
+		sceKernelExitGame();
 	}
 
 	ssize_t bytes_read = read(*fd, *data, *file_size);
@@ -180,6 +176,19 @@ void read_checkpoint(char *checkpoint, Config *config, TransformerWeights *weigh
 void build_transformer(Transformer *t, char *checkpoint_path)
 {
 	read_checkpoint(checkpoint_path, &t->config, &t->weights, &t->fd, &t->data, &t->file_size); // le a config e os pesos do checkpoint
+	if (DEBUG == 1) {
+		newScreen(0, 1);
+		print("[BUILD TRANSFORMER]\n"); delay(2000);
+		print("Reading weights and configs from checkpoint file.\n"); delay(2000);
+		print("Checkpoint_path= %s\n", checkpoint_path); delay(2000);
+		print("Transformer dimension (dimension) = %d\n", t->config.dimension); delay(2000);
+		print("FFN Layers dimension (hidden_dimension) = %d\n", t->config.hidden_dimension); delay(2000);
+		print("Number of layers (number_of_layers) = %d\n", t->config.number_of_layers); delay(2000);
+		print("Number of attention heads (query) (number_of_heads) = %d\n", t->config.number_of_heads); delay(2000);
+		print("Number of Key/Value attention heads (number_key_value_heads) = %d\n", t->config.number_key_value_heads); delay(2000);
+		print("Vocabulary size (vocab_size) = %d\n", t->config.vocab_size); delay(2000);
+		print("Sequence Length (sequence_len) = %d\n", t->config.sequence_len); delay(2000);
+	}
 	malloc_run_state(&t->state, &t->config); // faz a alocação dos runstate buffers
 }
 

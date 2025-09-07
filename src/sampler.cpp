@@ -104,6 +104,13 @@ void build_sampler(Sampler *sampler, int vocab_size, float temperature, float to
 	sampler->rng_state = rng_seed;
 	// buffer only used with nucleus sampling; may not need but it's ~small
 	sampler->probindex = (ProbIndex*)malloc(sampler->vocab_size * sizeof(ProbIndex));
+	if (DEBUG == 1) {
+		print("[BUILD SAMPLER]\n\n"); delay(1000);
+		print("vocab size = %d\n\n", sampler->vocab_size); delay(2000);
+		print("temperature = %.2f\n\n", sampler->temperature); delay(2000);
+		print("topp = %.2f\n\n", sampler->topp); delay(2000);
+		print("rng_state = %d\n\n", (int)sampler->rng_state); delay(2000);
+	}
 }
 
 void free_sampler(Sampler* sampler) {

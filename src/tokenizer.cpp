@@ -39,18 +39,34 @@ int compare_tokens(const void *a, const void *b) {
 
 void build_tokenizer(Tokenizer *t, char *tokenizer_path, int vocab_size)
 {
-	// i should have written the vocab_size into the tokenizer file... sigh
 	t->vocab_size = vocab_size;
-	// malloc space to hold the scores and the strings
+  if (DEBUG == 1) {
+    newScreen(0, 1);
+    print("[BUILD TOKENIZER]\n");
+    print("vocabulary_size = %d\n\n", vocab_size);
+    delay(2000);
+  }
+	/*
+  Aloca um array que vai armazenar cada "palavra" (token) do vocabulário como uma string
+  */
 	t->vocab = (char **)malloc(vocab_size * sizeof(char *));
+  /*
+  Este array armazena uma pontuação (score) p/ cada token usada durante o processo de tokenização (encode)
+  p/ decidir a melhor forma de agrupar caracteres.
+  */
 	t->vocab_scores = (float *)malloc(vocab_size * sizeof(float));
 	t->sorted_vocab = NULL; // initialized lazily
+
+  /*
+  t->byte_pieces: um pequeno dict para todos os 256 bytes possiveis. Serve como uma
+  segunda opção para representar qualquer char que nao esteja no vocabulário principal.
+  */
 	for (int i = 0; i < 256; i++)
 	{
 		t->byte_pieces[i * 2] = (unsigned char)i;
 		t->byte_pieces[i * 2 + 1] = '\0';
 	}
-	// read in the file
+	// Le o arquivo binario
 	FILE *file = fopen(tokenizer_path, "rb");
 	if (!file)
 	{
@@ -58,27 +74,46 @@ void build_tokenizer(Tokenizer *t, char *tokenizer_path, int vocab_size)
 		delay(1000);
 		exit(EXIT_FAILURE);
 	}
+  // max_token_length é o comprimento maximo de um token. É o primeiro dado do arquivo.
 	if (fread(&t->max_token_length, sizeof(int), 1, file) != 1)
 	{
 		print("failed read\n");
 		delay(1000);
 		exit(EXIT_FAILURE);
 	}
+
+  /*
+  Nesse loop, a função executa vocab_size vezes (128.256 vezes pro llama3).
+  Em cada iteração eh lido um conjunto de dados p/ um unico token de arquivo.
+  */
 	int len;
 	for (int i = 0; i < vocab_size; i++)
 	{
+    /*
+    vocab_scores: le o float que representa a pontuação do token
+    */
 		if (fread(t->vocab_scores + i, sizeof(float), 1, file) != 1)
 		{
 			print("failed read\n");
 			delay(1000);
 			exit(EXIT_FAILURE);
 		}
+    if (DEBUG == 1) { print("token score = %.2f\n\n", t->vocab_scores + i); delay(500); } 
+    /*
+    le um int que informa o quão longa é a string do token
+    */
 		if (fread(&len, sizeof(int), 1, file) != 1)
 		{
 			print("failed read\n");
 			delay(1000);
 			exit(EXIT_FAILURE);
 		}
+
+    if (DEBUG == 1) { print("token length = %.2f\n\n", len); delay(500); }
+    /*
+    usa malloc pra criar um espaço na memoria exatamente do tamanho necessario p guardar a string.
+    com isso, le os caracteres do token do arquivo e armazena do espaço recem criado.
+    */
 		t->vocab[i] = (char *)malloc(len + 1);
 		if (fread(t->vocab[i], len, 1, file) != 1)
 		{
@@ -86,8 +121,10 @@ void build_tokenizer(Tokenizer *t, char *tokenizer_path, int vocab_size)
 			delay(1000);
 			exit(EXIT_FAILURE);
 		}
+    if (DEBUG == 1) { print("token = %s\n\n", t->vocab[i]); delay(500); }
 		t->vocab[i][len] = '\0'; // add the string terminating token
 	}
+  
 	fclose(file);
 }
 
